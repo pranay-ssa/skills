@@ -1,0 +1,24 @@
+# agent-skills-eval.yaml — AuGENT Use Case Builder skill eval
+# Run with: $env:OPENROUTER_API_KEY="$key"; npx agent-skills-eval --config skill-create/agent-skills-eval-usecase.yaml
+
+root: ./skill-create/skills/augent-usecase-builder
+workspace: ./skill-create/agent-skills-workspace-usecase
+baseline: true
+target: openai/gpt-4o-mini
+judge: openai/gpt-4o-mini
+baseUrl: https://openrouter.ai/api/v1
+apiKeyEnv: OPENROUTER_API_KEY
+concurrency: 2
+layout: iteration
+strict: false
+report:
+  enabled: true
+  title: "AuGENT Use Case Builder — Skill Eval Report"
+
+targetParams:
+  temperature: 0
+  max_tokens: 16384
+
+judgeParams:
+  temperature: 0
+  max_tokens: 4096

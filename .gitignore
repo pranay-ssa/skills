@@ -1,0 +1,10 @@
+# Agent skills eval workspaces
+agent-skills-workspace/
+agent-skills-workspace-usecase/
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Temp results
+**/results/

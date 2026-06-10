@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>AuGENT Architecture Visualizer</title>
+<style>
+  html, body {
+    margin: 0; padding: 0; height: 100%;
+    background: #0B0E14; color: #E0E0E0;
+    font-family: 'JetBrains Mono', Consolas, 'Courier New', monospace;
+    overflow: hidden; user-select: none;
+  }
+  #sidebar {
+    position: absolute; top: 0; right: 0; width: 320px; height: 100%;
+    background: #131720; border-left: 1px solid #333;
+    transition: width 0.25s ease; overflow-y: auto; overflow-x: hidden;
+    z-index: 10;
+  }
+  #sidebar.collapsed { width: 0; border-left: none; }
+  #sidebar-content { padding: 20px; min-width: 280px; }
+  h3 { color: #4D9EFF; margin-top: 0; font-size: 13px; text-transform: uppercase; letter-spacing: 1px; }
+  h4 { color: #AAA; margin: 16px 0 8px 0; font-size: 13px; }
+  p { font-size: 12px; line-height: 1.5; color: #CCC; margin: 0 0 16px 0; }
+  .swatch { display: inline-block; width: 12px; height: 12px; margin-right: 8px; vertical-align: middle; }
+  .legend-item { display: flex; align-items: center; font-size: 12px; margin-bottom: 6px; color: #BBB; cursor: pointer; }
+  .legend-item:hover { color: #FFF; }
+  .list-item { font-size: 12px; padding: 4px 0; cursor: pointer; color: #888; transition: color 0.2s; }
+  .list-item:hover { color: #4D9EFF; text-decoration: underline; }
+  #toggle-btn {
+    position: absolute; top: 20px; right: 20px; z-index: 100;
+    background: transparent; border: none; cursor: pointer;
+    color: #4D9EFF; font-size: 24px; padding: 4px; border-radius: 4px;
+  }
+  #toggle-btn:hover { background: rgba(77,158,255,0.1); }
+  
+  svg { width: 100%; height: 100%; display: block; outline: none; }
+  .node-group { cursor: pointer; }
+  .node-bg { transition: fill 0.2s, stroke 0.2s, stroke-width 0.2s; }
+  .node-group:hover .node-bg { stroke-width: 2.5px; filter: brightness(1.2); }
+  .node-group.dimmed { opacity: 0.12; }
+  .node-group.selected .node-bg { stroke: #4D9EFF !important; stroke-width: 3px; filter: drop-shadow(0 0 8px rgba(77,158,255,0.5)); }
+  
+  .edge-group .edge-path { opacity: 0; fill: none; transition: opacity 0.3s, filter 0.3s, stroke-width 0.3s; pointer-events: none; }
+  .edge-group.visible .edge-path { opacity: 0.5; }
+  .edge-group.highlighted .edge-path { opacity: 1; stroke-width: 3.5px; filter: drop-shadow(0 0 4px currentColor); }
+  .edge-group.dimmed .edge-path { opacity: 0.03; }
+
+  .bg-grid { fill: url(#grid); }
+</style>
+</head>
+<body>
+
+<button id="toggle-btn">☰</button>
+<div id="sidebar">
+  <div id="sidebar-content">
+    <h3>AuGENT Explorer</h3>
+    <h4>Zoom & Navigation</h4>
+    <p>Scroll: zoom | Right-drag: pan | Click: details</p>
+    <button id="btn-zoom-in" style="background:#222;color:#EEE;border:1px solid #444;padding:4px 8px;cursor:pointer;border-radius:4px;">+</button>
+    <button id="btn-zoom-out" style="background:#222;color:#EEE;border:1px solid #444;padding:4px 8px;cursor:pointer;border-radius:4px;">-</button>
+    <button id="btn-fit" style="background:#222;color:#EEE;border:1px solid #444;padding:4px 8px;cursor:pointer;border-radius:4px;">Fit</button>
+    <span id="zoom-label" style="font-size:11px;color:#888;margin-left:8px;">100%</span>
+
+    <h4>Risk Levels</h4>
+    <div class="legend-item"><div class="swatch" style="background:#F44;border:1px solid #F44;"></div> God Module</div>
+    <div class="legend-item"><div class="swatch" style="background:#F80;border:1px solid #F80;"></div> High Coupling</div>
+    <div class="legend-item"><div class="swatch" style="background:#FC0;border:1px solid #FC0;"></div> Ext Dependency</div>
+    <div class="legend-item"><div class="swatch" style="background:#4F4;border:1px solid #4F4;"></div> Extension Pt</div>
+    <div class="legend-item"><div class="swatch" style="background:#888;border:1px solid #888;"></div> Stable</div>
+
+    <h4>Edges</h4>
+    <div class="legend-item"><div class="swatch" style="background:#0BF;"></div> Orchestration</div>
+    <div class="legend-item"><div class="swatch" style="background:#F80;"></div> Guardrail</div>
+    <div class="legend-item"><div class="swatch" style="background:#4F4;"></div> Data</div>
+    <div class="legend-item"><div class="swatch" style="background:#888;"></div> Dependency</div>
+    <div class="legend-item"><div class="swatch" style="background:#F0F;"></div> Event</div>
+    <div class="legend-item"><div class="swatch" style="background:#4D9EFF;"></div> Pipeline</div>
+
+    <h4>Use Case 2</h4>
+    <p>event_detector triggers pipeline. Orchestrator router routes to dev branch or confirmation branch. Finally distributed.</p>
+
+    <div id="detail-panel" style="display:none; margin-top:24px; padding-top:16px; border-top:1px solid #333;">
+      <h3 id="detail-name">Node Name</h3>
+      <p id="detail-desc" style="color:#FFF;font-weight:bold;margin-bottom:8px;">Role</p>
+      <div style="font-size:11px;color:#888;margin-bottom:16px;" id="detail-meta">Class | Risk</div>
+      
+      <h4 style="margin-top:0;">Outgoing</h4>
+      <div id="detail-out"></div>
+      
+      <h4>Incoming</h4>
+      <div id="detail-in"></div>
+    </div>
+  </div>
+</div>
+
+<div style="width:100%;height:100%;position:absolute;top:0;left:0;" id="svg-container">
+  <svg id="canvas" viewBox="0 0 2700 1200" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+        <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#1A1F2B" stroke-width="1" />
+      </pattern>
+      <!-- Markers for each color -->
+      <marker id="arrow-0BF" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#0BF"/></marker>
+      <marker id="arrow-F80" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#F80"/></marker>
+      <marker id="arrow-4F4" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#4F4"/></marker>
+      <marker id="arrow-888" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#888"/></marker>
+      <marker id="arrow-F0F" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#F0F"/></marker>
+      <marker id="arrow-4D9EFF" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#4D9EFF"/></marker>
+      <marker id="arrow-FF0" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#FF0"/></marker>
+    </defs>
+    
+    <g id="transform-group" transform="matrix(1 0 0 1 0 0)">
+      <rect x="-5000" y="-5000" width="10000" height="10000" class="bg-grid" />
+      
+      <!-- Titles -->
+      <text x="120" y="80" fill="#FFF" font-size="32" font-weight="bold">AuGENT Architecture Visualizer</text>
+      <text x="120" y="110" fill="#888" font-size="16">Platform Core &amp; Usecase 2 Pipeline</text>
+      
+      <!-- FRAMEWORK SECTION -->
+      <rect x="100" y="140" width="1500" height="400" fill="#11151C" rx="10" ry="10" />
+      <text x="120" y="180" fill="#666" font-size="20" font-weight="bold" letter-spacing="2">FRAMEWORK LAYER</text>
+      
+      <!-- Framework Columns -->
+      <text x="120" y="220" fill="#555" font-size="14">ORCHESTRATION</text>
+      <text x="400" y="220" fill="#555" font-size="14">AGENTS</text>
+      <text x="680" y="220" fill="#555" font-size="14">GUARDRAILS</text>
+      <text x="960" y="220" fill="#555" font-size="14">LLM SERVICE</text>
+      <text x="1240" y="220" fill="#555" font-size="14">OBSERVABILITY</text>
+
+      <!-- USE CASE SECTION -->
+      <line x1="100" y1="580" x2="1600" y2="580" stroke="#333" stroke-width="2" stroke-dasharray="10,5" />
+      <rect x="100" y="620" width="1500" height="300" fill="#0A1016" rx="10" ry="10" />
+      <text x="120" y="660" fill="#666" font-size="20" font-weight="bold" letter-spacing="2">USE CASE LAYER</text>
+      
+      <!-- Nodes Layer -->
+      <g id="edges-layer"></g>
+      <g id="nodes-layer"></g>
+      
+    </g>
+  </svg>
+</div>
+
+<script>
+const SVG_NS = "http://www.w3.org/2000/svg";
+const allNodes = [];
+const allEdges = [];
+
+const svg = document.getElementById("canvas");
+const transformGroup = document.getElementById("transform-group");
+const edgesLayer = document.getElementById("edges-layer");
+const nodesLayer = document.getElementById("nodes-layer");
+
+let currentTransform = { x: 0, y: 0, k: 1 };
+let selectedNodeId = null;
+
+const COL_STEP = 280;
+const NODE_W = 210;
+const NODE_H = 48;
+const V_GAP = 16;
+const FCOL_START = 120; // x for first column
+
+// Utils
+function createSVG(tag, attrs={}) {
+  const el = document.createElementNS(SVG_NS, tag);
+  for(let k in attrs) el.setAttribute(k, attrs[k]);
+  return el;
+}
+
+// Draw Node
+function drawNode(id, label, x, y, riskBorder, riskFill, colName, roleDesc) {
+  const g = createSVG("g", { id: "node-"+id, class: "node-group", transform: `translate(${x},${y})` });
+  
+  const rect = createSVG("rect", {
+    class: "node-bg",
+    width: NODE_W, height: NODE_H, rx: 6, ry: 6,
+    fill: riskFill, stroke: riskBorder, "stroke-width": 1.5
+  });
+  
+  const text = createSVG("text", {
+    x: 16, y: 28, fill: "#E0E0E0", "font-size": "14", "font-weight": "bold", "font-family": "JetBrains Mono"
+  });
+  
+  if (label.length > 15) {
+    text.setAttribute("textLength", "180");
+    text.setAttribute("lengthAdjust", "spacingAndGlyphs");
+  }
+  text.textContent = label;
+  
+  g.appendChild(rect);
+  g.appendChild(text);
+  
+  // store node data
+  const nodeData = { id, label, x, y, w: NODE_W, h: NODE_H, riskBorder, riskFill, colName, roleDesc };
+  allNodes.push(nodeData);
+  
+  g.addEventListener("click", (e) => { e.stopPropagation(); selectNode(id); });
+  nodesLayer.appendChild(g);
+}
+
+// Find port coordinates
+function getPort(nodeId, side) {
+  const n = allNodes.find(x => x.id === nodeId);
+  if(!n) return {x:0, y:0};
+  if(side === "top") return { x: n.x + n.w/2, y: n.y };
+  if(side === "bottom") return { x: n.x + n.w/2, y: n.y + n.h };
+  if(side === "left") return { x: n.x, y: n.y + n.h/2 };
+  if(side === "right") return { x: n.x + n.w, y: n.y + n.h/2 };
+  return {x: n.x + n.w/2, y: n.y + n.h/2};
+}
+
+// Edge drawing helpers
+function _appendEdge(pathStr, color, width, dash, markerId, fromId, toId, type, label) {
+  const g = createSVG("g", { class: "edge-group", "data-from": fromId, "data-to": toId });
+  const path = createSVG("path", {
+    class: "edge-path",
+    d: pathStr,
+    stroke: color, "stroke-width": width,
+    "stroke-dasharray": dash || "none"
+  });
+  if(markerId) path.setAttribute("marker-end", `url(#${markerId})`);
+  
+  g.appendChild(path);
+  edgesLayer.appendChild(g);
+  allEdges.push({ fromId, toId, type, g });
+}
+
+// Smart Edge Logic
+function smartEdge(fromId, toId, color, width, dash, type, label) {
+  const fn = allNodes.find(x => x.id === fromId);
+  const tn = allNodes.find(x => x.id === toId);
+  if(!fn || !tn) return;
+
+  const dx = (tn.x + tn.w/2) - (fn.x + fn.w/2);
+  const dy = (tn.y + tn.h/2) - (fn.y + fn.h/2);
+  
+  let fromPort, toPort, orient = 'h';
+  
+  if (Math.abs(dx) < 10) {
+    // Same column
+    if (dy > 0) { fromPort = 'bottom'; toPort = 'top'; orient = 'v'; }
+    else { fromPort = 'top'; toPort = 'bottom'; orient = 'v'; }
+  } else if (Math.abs(dx) >= Math.abs(dy)) {
+    // Horizontal dominant
+    fromPort = dx > 0 ? 'right' : 'left';
+    toPort = dx > 0 ? 'left' : 'right';
+    
+    // Narrow gap override
+    const portGap = Math.abs(tn.x - (fn.x + fn.w));
+    if (portGap < NODE_W/2 && Math.abs(dy) > NODE_H) {
+      fromPort = 'bottom'; toPort = 'top'; orient = 'v';
+    }
+  } else {
+    // Vertical dominant
+    fromPort = dy > 0 ? 'bottom' : 'top';
+    toPort = dy > 0 ? 'top' : 'bottom';
+    orient = 'v';
+  }
+  
+  drawEdgeCore(fromId, toId, fromPort, toPort, color, width, dash, type, label, orient);
+}
+
+// Named Overrides
+function leftArc(fromId, toId, color, width, dash, type, label) {
+  const fn = allNodes.find(x => x.id === fromId);
+  const tn = allNodes.find(x => x.id === toId);
+  if(!fn || !tn) return;
+  const p1 = getPort(fromId, 'left');
+  const p2 = getPort(toId, 'left');
+  const dy = p2.y - p1.y;
+  const bulge = p1.x - Math.max(30, Math.abs(dy)*0.25);
+  
+  const path = `M ${p1.x},${p1.y} L ${p1.x-14},${p1.y} C ${bulge},${p1.y} ${bulge},${p2.y} ${p2.x-14},${p2.y} L ${p2.x},${p2.y}`;
+  _appendEdge(path, color, width, dash, `arrow-${color.replace('#','')}`, fromId, toId, type, label);
+}
+
+function rtEdge(fromId, toId, color, width, dash, type, label) {
+  const p1 = getPort(fromId, 'right');
+  const p2 = getPort(toId, 'top');
+  const path = `M ${p1.x},${p1.y} L ${p2.x},${p1.y} L ${p2.x},${p2.y}`;
+  _appendEdge(path, color, width, dash, `arrow-${color.replace('#','')}`, fromId, toId, type, label);
+}
+
+function nodeEdge(fromId, toId, color, width, dash, type, label) {
+  drawEdgeCore(fromId, toId, 'right', 'left', color, width, dash, type, label, 'h');
+}
+
+function drawEdgeCore(fromId, toId, fromPort, toPort, color, width, dash, type, label, orient) {
+  const p1 = getPort(fromId, fromPort);
+  const p2 = getPort(toId, toPort);
+  
+  let path = "";
+  if (orient === 'v' || (fromPort === 'bottom' && toPort === 'top')) {
+    if (Math.abs(p1.x - p2.x) < 5) {
+      path = `M ${p1.x},${p1.y} L ${p2.x},${p2.y}`; // straight line down
+    } else {
+      const midY = (p1.y + p2.y) / 2;
+      path = `M ${p1.x},${p1.y} C ${p1.x},${midY} ${p2.x},${midY} ${p2.x},${p2.y}`;
+    }
+  } else {
+    // horizontal S-curve
+    const midX = (p1.x + p2.x) / 2;
+    path = `M ${p1.x},${p1.y} C ${midX},${p1.y} ${midX},${p2.y} ${p2.x},${p2.y}`;
+  }
+  
+  let markerId = `arrow-${color.replace('#','')}`;
+  _appendEdge(path, color, width, dash, markerId, fromId, toId, type, label);
+}
+
+// Generate Nodes
+// 1. Framework
+const ORCH_X = FCOL_START;
+const AGENT_X = ORCH_X + COL_STEP;
+const GUARD_X = AGENT_X + COL_STEP;
+const LLM_X = GUARD_X + COL_STEP;
+const OBS_X = LLM_X + COL_STEP;
+
+// y-start 250
+drawNode('orchestrator', 'Orchestrator', ORCH_X, 250, '#F80', '#2A1A08', 'Orchestration', 'Manages workflow state and routing');
+drawNode('graph_builder', 'GraphBuilder', ORCH_X, 250 + NODE_H + V_GAP, '#F80', '#2A1A08', 'Orchestration', 'Compiles StateGraph');
+drawNode('node_executor', 'NodeExecutor', ORCH_X, 250 + (NODE_H + V_GAP)*2, '#F44', '#2A1010', 'Orchestration', 'Executes node functions with safeguards');
+
+drawNode('augent_agent', 'AuGENTAgent', AGENT_X, 250, '#F44', '#2A1010', 'Agents', 'Base agent interface');
+drawNode('agent_executor', 'AgentExecutor', AGENT_X, 250 + NODE_H + V_GAP, '#888', '#1A1D22', 'Agents', 'Executes agent tool loop');
+
+drawNode('input_guard', 'InputGuard', GUARD_X, 250, '#FC0', '#2A2A08', 'Guardrails', 'Validates input schema and role');
+drawNode('output_valid', 'OutputValid.', GUARD_X, 250 + NODE_H + V_GAP, '#F80', '#2A1A08', 'Guardrails', 'Validates output schema');
+drawNode('content_safety', 'ContentSafety', GUARD_X, 250 + (NODE_H + V_GAP)*2, '#FC0', '#2A2A08', 'Guardrails', 'Azure content safety checks');
+drawNode('schema_reg', 'SchemaReg.', GUARD_X, 250 + (NODE_H + V_GAP)*3, '#888', '#1A1D22', 'Guardrails', 'Registry for pydantic schemas');
+
+drawNode('llm_service', 'LLMService', LLM_X, 250, '#F44', '#2A1010', 'LLM Service', 'Abstraction for LLM completions');
+drawNode('azure_openai', 'AzureOpenAI', LLM_X, 250 + NODE_H + V_GAP, '#FC0', '#2A2A08', 'LLM Service', 'Azure OpenAI integration');
+
+drawNode('event_bus', 'EventBus', OBS_X, 250, '#F44', '#2A1010', 'Observability', 'Decoupled event emission');
+drawNode('langfuse_exp', 'LangfuseExp.', OBS_X, 250 + NODE_H + V_GAP, '#FC0', '#2A2A08', 'Observability', 'Exports traces to Langfuse');
+drawNode('metrics', 'Metrics', OBS_X, 250 + (NODE_H + V_GAP)*2, '#888', '#1A1D22', 'Observability', 'Aggregates platform metrics');
+
+// 2. Use Case (Row 1 at Y=700, Row 2 at Y=800)
+// row 1: event_detector -> trigger_classifier -> novelty_classifier -> orch_router
+const UC_ROW1 = 700;
+drawNode('event_detector', 'event_detector', ORCH_X, UC_ROW1, '#4F4', '#0A2A0A', 'Use Case 2', 'Detects market event');
+drawNode('trigger_class', 'trigger_class.', AGENT_X, UC_ROW1, '#4F4', '#0A2A0A', 'Use Case 2', 'Classifies trigger type');
+drawNode('novelty_class', 'novelty_class.', GUARD_X, UC_ROW1, '#4F4', '#0A2A0A', 'Use Case 2', 'Assesses novelty score');
+drawNode('orch_router', 'orch_router', LLM_X, UC_ROW1, '#4F4', '#0A2A0A', 'Use Case 2', 'Routes to DEV or Confirmation path');
+
+// row 2: context_coll. -> analyser -> portfolio_mapper -> summary_agent -> distributor
+const UC_ROW2 = 800;
+drawNode('context_coll', 'context_coll.', ORCH_X, UC_ROW2, '#4F4', '#0A2A0A', 'Use Case 2', 'Collects vector DB context');
+drawNode('analyser', 'analyser', AGENT_X, UC_ROW2, '#4F4', '#0A2A0A', 'Use Case 2', 'Analyses context against event');
+drawNode('portfolio_mapper', 'portfolio_map.', GUARD_X, UC_ROW2, '#4F4', '#0A2A0A', 'Use Case 2', 'Maps insights to client portfolios');
+drawNode('summary_agent', 'summary_agent', LLM_X, UC_ROW2, '#4F4', '#0A2A0A', 'Use Case 2', 'Generates summary text');
+drawNode('distributor', 'distributor', OBS_X, UC_ROW2, '#4F4', '#0A2A0A', 'Use Case 2', 'Sends insight feed out');
+
+
+// Draw Edges
+// Framework internal edges
+smartEdge('orchestrator', 'graph_builder', '#0BF', 2, '', 'Orchestration');
+smartEdge('graph_builder', 'node_executor', '#0BF', 2, '', 'Orchestration');
+smartEdge('node_executor', 'augent_agent', '#0BF', 2, '', 'Orchestration');
+smartEdge('augent_agent', 'agent_executor', '#0BF', 2, '', 'Orchestration');
+
+smartEdge('input_guard', 'output_valid', '#F80', 1.8, '6,3', 'Guardrail');
+smartEdge('output_valid', 'content_safety', '#F80', 1.8, '6,3', 'Guardrail');
+smartEdge('content_safety', 'schema_reg', '#F80', 1.8, '6,3', 'Guardrail');
+
+smartEdge('llm_service', 'azure_openai', '#888', 1.2, '', 'Dependency');
+smartEdge('augent_agent', 'llm_service', '#4F4', 1.5, '5,3', 'Data');
+
+smartEdge('orchestrator', 'event_bus', '#F0F', 1.5, '', 'Event');
+smartEdge('node_executor', 'event_bus', '#F0F', 1.5, '', 'Event');
+smartEdge('event_bus', 'langfuse_exp', '#F0F', 1.5, '', 'Event');
+smartEdge('event_bus', 'metrics', '#F0F', 1.5, '', 'Event');
+
+// Framework to Use Case
+// (Left arc to avoid overlapping center lines if orchestrator -> event_detector)
+leftArc('orchestrator', 'event_detector', '#0BF', 2, '', 'Orchestration');
+leftArc('node_executor', 'event_detector', '#0BF', 2, '', 'Orchestration');
+
+// Use case nodes extend AuGENTAgent
+drawEdgeCore('augent_agent', 'trigger_class', 'bottom', 'top', '#888', 1.2, '', 'Dependency', '', 'v');
+drawEdgeCore('augent_agent', 'novelty_class', 'bottom', 'top', '#888', 1.2, '', 'Dependency', '', 'v');
+drawEdgeCore('augent_agent', 'context_coll', 'bottom', 'top', '#888', 1.2, '', 'Dependency', '', 'v');
+drawEdgeCore('augent_agent', 'analyser', 'bottom', 'top', '#888', 1.2, '', 'Dependency', '', 'v');
+drawEdgeCore('augent_agent', 'summary_agent', 'bottom', 'top', '#888', 1.2, '', 'Dependency', '', 'v');
+
+// Use Case row 1 sequential
+nodeEdge('event_detector', 'trigger_class', '#4D9EFF', 2, '', 'Pipeline');
+nodeEdge('trigger_class', 'novelty_class', '#4D9EFF', 2, '', 'Pipeline');
+nodeEdge('novelty_class', 'orch_router', '#4D9EFF', 2, '', 'Pipeline');
+
+// Use Case row 2 sequential (Dev branch)
+nodeEdge('context_coll', 'analyser', '#4D9EFF', 2, '', 'Pipeline');
+nodeEdge('analyser', 'portfolio_mapper', '#4D9EFF', 2, '', 'Pipeline');
+
+// Use Case router paths
+drawEdgeCore('orch_router', 'context_coll', 'bottom', 'top', '#4F4', 2, '', 'Pipeline', '', 'v'); // Dev branch - green curved
+drawEdgeCore('orch_router', 'portfolio_mapper', 'bottom', 'top', '#FF0', 2, '5,3', 'Pipeline', '', 'v'); // Confirmation - yellow dashed
+
+nodeEdge('portfolio_mapper', 'summary_agent', '#4D9EFF', 2, '', 'Pipeline');
+nodeEdge('summary_agent', 'distributor', '#4D9EFF', 2, '', 'Pipeline');
+
+
+// Interaction Logic
+function selectNode(id) {
+  if (selectedNodeId === id) {
+    deselectAll();
+    return;
+  }
+  selectedNodeId = id;
+  const n = allNodes.find(x => x.id === id);
+  if(!n) return;
+  
+  // Sidebar update
+  document.getElementById("detail-panel").style.display = "block";
+  document.getElementById("detail-name").textContent = n.label;
+  document.getElementById("detail-desc").textContent = n.roleDesc;
+  document.getElementById("detail-meta").textContent = `${n.colName} | Risk: ${n.riskBorder}`;
+  
+  const inEdges = allEdges.filter(e => e.toId === id);
+  const outEdges = allEdges.filter(e => e.fromId === id);
+  
+  const renderEdgeList = (edges, dir) => {
+    return edges.map(e => {
+      const targetId = dir === 'in' ? e.fromId : e.toId;
+      const targetNode = allNodes.find(x => x.id === targetId);
+      return `<div class="list-item" onclick="selectNode('${targetId}')">${targetNode ? targetNode.label : targetId} (${e.type})</div>`;
+    }).join("");
+  };
+  
+  document.getElementById("detail-in").innerHTML = inEdges.length ? renderEdgeList(inEdges, 'in') : '<div style="color:#666;font-size:12px;">None</div>';
+  document.getElementById("detail-out").innerHTML = outEdges.length ? renderEdgeList(outEdges, 'out') : '<div style="color:#666;font-size:12px;">None</div>';
+  
+  // Highlight graph
+  document.querySelectorAll(".node-group").forEach(el => {
+    el.classList.remove("selected");
+    el.classList.add("dimmed");
+  });
+  const selectedEl = document.getElementById("node-"+id);
+  selectedEl.classList.remove("dimmed");
+  selectedEl.classList.add("selected");
+  
+  // Show neighbours
+  const neighborIds = new Set();
+  inEdges.forEach(e => neighborIds.add(e.fromId));
+  outEdges.forEach(e => neighborIds.add(e.toId));
+  
+  neighborIds.forEach(nid => {
+    const el = document.getElementById("node-"+nid);
+    if(el) el.classList.remove("dimmed");
+  });
+  
+  // Highlight edges
+  allEdges.forEach(e => {
+    e.g.classList.remove("visible", "highlighted", "dimmed");
+    if (e.fromId === id || e.toId === id) {
+      e.g.classList.add("highlighted");
+    } else if (neighborIds.has(e.fromId) && neighborIds.has(e.toId)) {
+      e.g.classList.add("visible");
+    } else {
+      e.g.classList.add("dimmed");
+    }
+  });
+}
+
+function deselectAll() {
+  selectedNodeId = null;
+  document.getElementById("detail-panel").style.display = "none";
+  document.querySelectorAll(".node-group").forEach(el => {
+    el.classList.remove("selected", "dimmed");
+  });
+  allEdges.forEach(e => {
+    e.g.classList.remove("visible", "highlighted", "dimmed");
+  });
+}
+
+// Background click
+document.getElementById("svg-container").addEventListener("click", () => {
+  deselectAll();
+});
+
+// Sidebar Toggle
+const toggleBtn = document.getElementById("toggle-btn");
+const sidebar = document.getElementById("sidebar");
+toggleBtn.addEventListener("click", () => {
+  sidebar.classList.toggle("collapsed");
+  setTimeout(fitView, 300);
+});
+
+// Zoom / Pan Logic
+const container = document.getElementById("svg-container");
+let isDragging = false;
+let startX, startY;
+
+function applyTransform() {
+  transformGroup.setAttribute("transform", `matrix(${currentTransform.k} 0 0 ${currentTransform.k} ${currentTransform.x} ${currentTransform.y})`);
+  document.getElementById("zoom-label").textContent = Math.round(currentTransform.k * 100) + "%";
+}
+
+container.addEventListener("wheel", (e) => {
+  e.preventDefault();
+  const ds = e.deltaY > 0 ? 0.9 : 1.1;
+  const newK = Math.max(0.2, Math.min(3, currentTransform.k * ds));
+  
+  const rect = svg.getBoundingClientRect();
+  const mx = e.clientX - rect.left;
+  const my = e.clientY - rect.top;
+  
+  currentTransform.x = mx - (mx - currentTransform.x) * (newK / currentTransform.k);
+  currentTransform.y = my - (my - currentTransform.y) * (newK / currentTransform.k);
+  currentTransform.k = newK;
+  applyTransform();
+});
+
+container.addEventListener("mousedown", (e) => {
+  if(e.button !== 2) return; // right click only
+  e.preventDefault();
+  isDragging = true;
+  startX = e.clientX - currentTransform.x;
+  startY = e.clientY - currentTransform.y;
+  container.style.cursor = "grabbing";
+});
+window.addEventListener("mousemove", (e) => {
+  if(!isDragging) return;
+  currentTransform.x = e.clientX - startX;
+  currentTransform.y = e.clientY - startY;
+  applyTransform();
+});
+window.addEventListener("mouseup", (e) => {
+  if(e.button !== 2) return;
+  isDragging = false;
+  container.style.cursor = "default";
+});
+container.addEventListener("contextmenu", e => e.preventDefault());
+
+function fitView() {
+  const cw = container.clientWidth;
+  const ch = container.clientHeight;
+  const svgW = 1600; // content width approx
+  const svgH = 900;  // content height approx
+  const scale = Math.min(cw/svgW, ch/svgH) * 0.9;
+  currentTransform.k = scale;
+  currentTransform.x = (cw - svgW*scale)/2;
+  currentTransform.y = 50;
+  applyTransform();
+}
+
+document.getElementById("btn-zoom-in").addEventListener("click", () => {
+  currentTransform.k = Math.min(3, currentTransform.k * 1.2); applyTransform();
+});
+document.getElementById("btn-zoom-out").addEventListener("click", () => {
+  currentTransform.k = Math.max(0.2, currentTransform.k / 1.2); applyTransform();
+});
+document.getElementById("btn-fit").addEventListener("click", fitView);
+
+window.addEventListener('load', () => {
+  requestAnimationFrame(() => requestAnimationFrame(fitView));
+});
+
+</script>
+</body>
+</html>

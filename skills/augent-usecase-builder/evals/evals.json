@@ -1,0 +1,75 @@
+{
+  "skill_name": "augent-usecase-builder",
+  "evals": [
+    {
+      "id": "document-summarizer",
+      "name": "Linear pipeline scaffolding",
+      "prompt": "Create a new AuGENT use case called 'document_summarizer'. It needs one agent that calls GPT-4o to summarize documents and one deterministic node that formats the output. The graph should be linear: format -> summarize -> END. Output all the code files inline.",
+      "expected_output": "Complete use case code with pyproject.toml, graph.py with DocSummarizerState TypedDict extending BaseWorkflowState, models.py with SummarizerOutput using @SchemaRegistry.register_schema, agents/summarizer.py with SummarizerAgent extending AuGENTAgent, nodes/formatter.py with async def formatter function, and main.py with Orchestrator wiring. All imports use correct framework paths. LLM calls include api_key, workflow_id, and pinned model_version.",
+      "assertions": [
+        "State TypedDict extends BaseWorkflowState using multiple TypedDict inheritance",
+        "State uses total=False for all-optional fields",
+        "SummarizerOutput model has @SchemaRegistry.register_schema() decorator with matching agent name",
+        "SummarizerAgent class extends AuGENTAgent with an agent_name class attribute set",
+        "LLMService.call() receives api_key, workflow_id, and model_version parameters",
+        "Model version is pinned with date (e.g. 2024-08-06), not floating",
+        "build_graph() function uses GraphBuilder from ai_agents_core.orchestration",
+        "END is imported from ai_agents_core.orchestration.graph_builder, not from langgraph",
+        "main.py calls setup_logging() with usecase_name parameter",
+        "No hardcoded API keys — credentials come from os.getenv() or environment variables",
+        "Directory structure follows usecases/<name>/ai_agents/ pattern with agents/ and nodes/ subdirectories",
+        "pyproject.toml declares ai_agents_core as a dependency"
+      ]
+    },
+    {
+      "id": "add-agent-existing",
+      "name": "Add agent to existing use case",
+      "prompt": "I have an existing use case at usecases/market_analysis. Add a new LLM agent called 'SentimentAgent' that analyzes sentiment using Claude. It takes articles from state, calls LLM, and returns sentiment scores. Wire it into the graph between the existing 'fetch_articles' and 'generate_report' nodes. Use OpenRouter as provider with model anthropic/claude-sonnet-4-20250514. Output the new and modified code inline.",
+      "expected_output": "New agent file with SentimentAgent(AuGENTAgent), new schema in models.py, updated graph.py with new node and adjusted edges. All imports correct.",
+      "assertions": [
+        "SentimentAgent class extends AuGENTAgent",
+        "agent_name attribute is set on the class",
+        "agent_name matches the string passed to @SchemaRegistry.register_schema()",
+        "LLMService.call() uses provider parameter or provider-aware configuration",
+        "Model name includes explicit version date (20250514 in the model identifier)",
+        "Graph edges are updated to: fetch_articles -> sentiment_agent -> generate_report",
+        "Existing node definitions and edges are preserved, not removed",
+        "Schema import in agent file enables side-effect registration (F401-style)",
+        "No existing code patterns are broken or contradicted"
+      ]
+    },
+    {
+      "id": "branching-graph",
+      "name": "Conditional branching graph with router",
+      "prompt": "Build a use case called 'fraud_detector' with a branching graph: node 'transaction_validator' routes to either 'fraud_analyst' (LLM agent, if suspicious) or END (if clean). The fraud_analyst agent calls GPT-4o-mini to analyze suspicious transactions and then goes to 'alert_dispatcher' (deterministic node) which ends the graph. Add proper schema validation and observability. Output all code inline.",
+      "expected_output": "Complete use case with TransactionValidator as deterministic async function, FraudAnalystAgent as LLM agent with gpt-4o-mini-2024-07-18, AlertDispatcher as deterministic node. Graph has conditional edge from transaction_validator with pure router function. Router reads state field, no LLM in routing logic. All output schemas registered. Correct policies per node type.",
+      "assertions": [
+        "Router function is pure — reads state field, makes no LLM or API calls",
+        "Conditional edge uses routing_map dict or equivalent with 'fraud_analyst' and END targets",
+        "FraudAnalystAgent uses model name gpt-4o-mini with a pinned calendar-date version (not floating)",
+        "Agent output schema is registered via @SchemaRegistry.register_schema()",
+        "Transaction validator is a plain async def function, not an agent class",
+        "All graph paths eventually reach END (no dead ends)",
+        "setup_logging() is called in main.py with usecase_name parameter",
+        "workflow_id is propagated through every LLM call in the agent"
+      ]
+    },
+    {
+      "id": "rag-qa-api",
+      "name": "RAG use case with FastAPI endpoint",
+      "prompt": "Create use case 'rag_qa' on auGENT with: a vector search node (deterministic, reads query and returns documents from state), a RAG agent (LLM, takes query plus documents and generates answer), and a FastAPI endpoint at /api/v1/ask that accepts a question and returns the answer. Include proper output schema, observability setup, and health check endpoint. Output all code inline.",
+      "expected_output": "Complete use case with vector_search.py deterministic node, rag_agent.py with RAGAgent(AuGENTAgent), api/main.py with FastAPI, api/models.py with request/response Pydantic models, main.py CLI entry. Graph is vector_search -> rag_agent -> END. API returns AskResponse with answer field. Health endpoint at /api/v1/health.",
+      "assertions": [
+        "API endpoint at /api/v1/ask is a POST endpoint accepting JSON body with question field",
+        "API endpoint returns a response model with an answer field",
+        "Health check endpoint exists at /api/v1/health returning status",
+        "RAG agent is an AuGENTAgent subclass that uses documents from state in its prompt",
+        "Vector search node is deterministic — no LLMService.call(), no OpenAI calls",
+        "Agent output schema is registered via @SchemaRegistry.register_schema()",
+        "FastAPI request/response models (Pydantic) are separated from output schemas",
+        "A CLI entry point (main.py) exists in addition to the API server",
+        "setup_logging() is called in both main.py and api/main.py"
+      ]
+    }
+  ]
+}
