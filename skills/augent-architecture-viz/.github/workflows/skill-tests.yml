@@ -1,0 +1,111 @@
+name: Skill Tests
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "skills/augent-architecture-viz/**"
+  pull_request:
+    paths:
+      - "skills/augent-architecture-viz/**"
+  workflow_dispatch:
+    inputs:
+      subset:
+        description: "Run only subset (critical prompts)"
+        type: boolean
+        default: false
+      model:
+        description: "Model to use for evaluation"
+        required: false
+        default: "sonnet"
+
+jobs:
+  deterministic-checks:
+    name: Deterministic HTML Checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Run deterministic grader on seed HTML
+        run: |
+          python skills/augent-architecture-viz/scripts/grade_viz.py \
+            skills/augent-architecture-viz/assets/seed-usecase2.html
+
+      - name: Validate skill structure
+        run: |
+          # Check required files exist
+          for f in \
+            skills/augent-architecture-viz/SKILL.md \
+            skills/augent-architecture-viz/scripts/grade_viz.py \
+            skills/augent-architecture-viz/evals/prompts.csv \
+            skills/augent-architecture-viz/evals/graders/rubric.md \
+            skills/augent-architecture-viz/evals/graders/llm-rubric.mjs; do
+            if [ ! -f "$f" ]; then
+              echo "Missing required file: $f"
+              exit 1
+            fi
+          done
+          echo "All required files present"
+
+      - name: Validate prompts.csv structure
+        run: |
+          python -c "
+import csv
+with open('skills/augent-architecture-viz/evals/prompts.csv') as f:
+    reader = csv.reader(f)
+    headers = next(reader)
+    assert headers[0] == 'id', f'Expected id column, got {headers[0]}'
+    assert headers[1] == 'expect_trigger'
+    assert headers[2] == 'expected_type'
+    
+    ids = []
+    for row in reader:
+        if row and not row[0].startswith('#'):
+            ids.append(row[0])
+            
+    print(f'Total prompts: {len(ids)}')
+    print(f'Prompt IDs: {ids}')
+    
+    # Check we have diverse types
+    triggers = set()
+    types = set()
+    with open('skills/augent-architecture-viz/evals/prompts.csv') as f2:
+        for row in csv.reader(f2):
+            if row and not row[0].startswith('#') and row[0] != 'id':
+                triggers.add(row[1])
+                types.add(row[2])
+    
+    print(f'Trigger types: {triggers}')
+    print(f'Expected types: {types}')
+    
+    assert 'true' in triggers, 'Missing positive triggers'
+    assert 'false' in triggers, 'Missing negative triggers'
+    assert 'full' in types, 'Missing full type'
+    assert 'fwonly' in types, 'Missing fwonly type'
+    assert 'none' in types, 'Missing none type'
+    print('All validations passed')
+"
+
+  agent-eval:
+    name: Agent Eval (smoke)
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Run LLM rubric on seed HTML
+        run: |
+          node skills/augent-architecture-viz/evals/graders/llm-rubric.mjs \
+            skills/augent-architecture-viz/assets/seed-usecase2.html \
+            /tmp/llm-grade.json
+          cat /tmp/llm-grade.json

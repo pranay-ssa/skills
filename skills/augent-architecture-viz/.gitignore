@@ -1,0 +1,17 @@
+# Eval results (generated during testing)
+evals/results/
+evals/*/results/**
+
+# Generated walkthrough HTML files
+walkthrough-*.html
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Node
+node_modules/
+
+# OS files
+.DS_Store
+Thumbs.db

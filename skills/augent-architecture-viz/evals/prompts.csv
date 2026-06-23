@@ -1,0 +1,29 @@
+id,expect_trigger,expected_type,prompt
+# --- Explicit triggers ($viz prefix) ---
+explicit-default,true,full,"$viz show me the architecture"
+explicit-usecase2,true,full,"$viz show usecase2 architecture"
+explicit-framework,true,fwonly,"$viz framework only"
+explicit-custom,true,custom,"$viz custom pipeline for document-intelligence — agents: doc_ingestor, text_extractor, entity_recognizer, summarizer, report_generator"
+explicit-bare,true,full,"$viz"
+# --- Implicit triggers (natural language) ---
+implicit-architecture,true,full,"show me the auGENT architecture visualization"
+implicit-diagram,true,full,"draw a flow diagram for usecase2"
+implicit-components,true,full,"how do the auGENT components connect"
+implicit-explore,true,full,"explore the framework structure of auGENT"
+implicit-pipeline,true,full,"show the pipeline for usecase2"
+implicit-visualize,true,full,"visualize the auGENT platform"
+implicit-map,true,full,"map the modules in the auGENT framework"
+# --- Negative cases (should NOT trigger) ---
+negative-refactor,false,none,"refactor the SKILL.md to use clearer headings"
+negative-test,false,none,"write unit tests for the guardrails module"
+negative-fix,false,none,"fix the bug in the event bus implementation"
+negative-doc,false,none,"write documentation for the API endpoints"
+negative-build,false,none,"create a new AuGENT use case for fraud detection"
+negative-deploy,false,none,"deploy the usecase2 to production"
+negative-generic,false,none,"explain how Python async/await works"
+# --- Edge cases ---
+edge-vague,true,full,"$viz diagram"
+edge-partial,true,full,"$viz show"
+edge-fw-implicit,true,fwonly,"just the framework layer no use case"
+edge-no-usecase,true,full,"visualize the platform architecture"
+edge-complex-custom,true,custom,"$viz custom pipeline for customer-support — agents: ticket_classifier, intent_detector, response_generator, escalation_handler, feedback_collector with branch for high_priority -> escalation_handler and standard -> response_generator"

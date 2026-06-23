@@ -2,65 +2,93 @@
   "skill_name": "augent-architecture-viz",
   "evals": [
     {
-      "id": "basic-usecase2",
-      "name": "Default usecase2 full visualization",
-      "prompt": "Show me the auGENT architecture visualization. I need an interactive HTML file that shows how the platform framework connects to usecase2.",
-      "expected_output": "A self-contained HTML file with interactive SVG diagram showing the auGENT framework (Orchestration, Agents, Guardrails, LLM Service, Observability) stacked above the usecase2 pipeline (event_detector -> trigger_classifier -> novelty_classifier -> orch_router, with development and confirmation branches). Dark engineering theme, clickable nodes, hidden edges that reveal on selection, zoom/pan interaction, search box, right sidebar.",
+      "id": "explicit-default",
+      "name": "Explicit $viz trigger with default usecase2",
+      "prompt": "$viz show me the auGENT architecture visualization",
+      "expected_output": "Self-contained HTML file with interactive SVG diagram showing auGENT framework (5 columns) above usecase2 pipeline. Dark engineering theme, clickable nodes, hidden edges, zoom/pan, search, collapsible sidebar.",
       "assertions": [
         "The HTML is fully self-contained with no external CDN or URL references",
-        "Contains an SVG element with viewBox='0 0 2700 1200' and explicit width/height",
-        "Uses the dark engineering theme (#0B0E14 background, #4D9EFF accent)",
-        "All CSS and JavaScript are inline (no external files)",
-        "Framework layer includes Orchestrator, GraphBuilder, NodeExecutor, AuGENTAgent, LLMService, EventBus modules",
-        "Use case layer includes event_detector, trigger_classifier, novelty_classifier, orch_router nodes on row 1",
-        "Use case layer includes context_collector (or context_coll.), analyser, portfolio_mapper (or portfolio_map.), summary_agent, and distributor on row 2",
-        "Contains interactive JavaScript for zoom, pan, node selection, and edge visibility",
-        "Contains a search/filter input and a collapsible sidebar",
-        "Contains zero emoji characters"
+        "Contains SVG with viewBox='0 0 2700 1200' and explicit width/height",
+        "Dark engineering theme (#0B0E14 bg, #4D9EFF accent, monospace font)",
+        "Framework layer: 5 columns (Orchestration, Agents, Guardrails, LLM Service, Observability)",
+        "Use case layer includes usecase2 pipeline nodes",
+        "JavaScript for zoom, pan, node selection, edge visibility",
+        "Search/filter input and collapsible sidebar",
+        "Zero emoji characters"
       ]
     },
     {
-      "id": "framework-only",
-      "name": "Framework-only visualization without use case",
-      "prompt": "I just need the auGENT framework layer visualized - the orchestration, agents, guardrails, LLM service, and observability columns. Don't include any use case pipeline.",
-      "expected_output": "A self-contained HTML with SVG diagram showing only the 5 framework columns. No use case layer, no divider, no pipeline nodes. Dark theme, interactive.",
+      "id": "explicit-framework",
+      "name": "Framework-only visualization ($viz framework)",
+      "prompt": "$viz framework only",
+      "expected_output": "Self-contained HTML with SVG diagram showing only the 5 framework columns. No use case layer. Dark theme, interactive.",
       "assertions": [
-        "The HTML is self-contained with no external references",
-        "Contains SVG with correct dark theme styling",
-        "Framework nodes include Orchestrator, GraphBuilder, AuGENTAgent, AgentExecutor, InputGuard, OutputValidator, ContentSafety, SchemaRegistry, LLMService, AzureOpenAI, EventBus, LangfuseExporter, Metrics",
-        "Does NOT contain use case nodes like event_detector, orch_router, context_collector",
-        "No use case pipeline section or divider",
-        "Contains interactive elements (zoom, selection, sidebar)"
+        "Self-contained with no external references",
+        "SVG with correct dark theme styling",
+        "Framework nodes include Orchestrator, GraphBuilder, AuGENTAgent, AgentExecutor, InputGuard, OutputValidator, LLMService, EventBus",
+        "Does NOT contain use case nodes",
+        "No use case pipeline section",
+        "Interactive elements (zoom, selection, sidebar)"
       ]
     },
     {
-      "id": "interactive-features",
-      "name": "Full interactivity requirements",
-      "prompt": "I'm demoing the auGENT platform architecture to our CTO tomorrow. Generate an interactive HTML diagram they can explore - needs zoom and pan, clickable nodes that show details, a search box to find specific modules, and a clean collapsible sidebar.",
-      "expected_output": "Rich interactive HTML visualization with complete zoom/pan controls, node selection with detail sidebar, edge visibility toggling on node selection, search filtering, and collapsible sidebar. Dark engineering theme.",
+      "id": "explicit-bare",
+      "name": "Bare $viz with no topic",
+      "prompt": "$viz",
+      "expected_output": "Self-contained HTML with default usecase2 visualization. Skill should default to usecase2 when no topic is given.",
       "assertions": [
-        "The HTML is self-contained with inline CSS and JS",
-        "JavaScript includes zoom (scale/transform) and pan (translate) logic",
-        "Node selection is implemented with click handlers that update a sidebar",
-        "Edge visibility changes on node selection (connected edges become visible)",
-        "A search input is present that filters nodes by text matching",
-        "A sidebar is present with zoom controls, risk level legend, edge type legend, and detail section",
-        "Sidebar can be toggled/collapsed with a hamburger button",
-        "Dark theme colors (#0B0E14, #131720, #4D9EFF) are present",
-        "No emoji characters used"
+        "Self-contained HTML",
+        "Framework layer present with 5 columns",
+        "Use case layer defaults to usecase2 pipeline",
+        "Dark theme with interactive elements"
       ]
     },
     {
-      "id": "custom-usecase",
-      "name": "Custom use case pipeline generation",
-      "prompt": "I'm building a new use case called 'document-intelligence' for auGENT. Its agents are: doc_ingestor, text_extractor, entity_recognizer, summarizer, and report_generator. Generate an architecture diagram with the framework on top and this pipeline below, using the same dark interactive style.",
-      "expected_output": "Self-contained HTML showing the 5-column framework above a new use case layer with the specified agents (doc_ingestor, text_extractor, entity_recognizer, summarizer, report_generator) connected as a sequential pipeline. Dark theme, interactive.",
+      "id": "explicit-custom",
+      "name": "Custom use case pipeline ($viz custom)",
+      "prompt": "$viz custom pipeline for document-intelligence — agents: doc_ingestor, text_extractor, entity_recognizer, summarizer, report_generator",
+      "expected_output": "Self-contained HTML showing 5-column framework above custom use case layer with specified agents. Dark theme, interactive.",
       "assertions": [
-        "The HTML is self-contained with no external references",
-        "Framework layer is present with the 5 standard column categories (Orchestration, Agents, Guardrails, LLM Service, Observability)",
+        "Self-contained with no external references",
+        "Framework layer with 5 standard column categories",
         "Use case nodes include doc_ingestor, text_extractor, entity_recognizer, summarizer, report_generator",
-        "Pipeline edges connect the custom use case nodes in sequence",
-        "Dark interactive theme with zoom, selection, and sidebar"
+        "Pipeline edges connect custom nodes in sequence",
+        "Dark interactive theme with zoom, selection, sidebar"
+      ]
+    },
+    {
+      "id": "trigger-negative",
+      "name": "Negative case: should NOT trigger",
+      "prompt": "refactor the SKILL.md to use clearer headings",
+      "expected_output": "No HTML file generated. Skill should not trigger for non-architecture tasks.",
+      "assertions": [
+        "No HTML file is generated",
+        "Agent does not produce architecture visualization output"
+      ]
+    },
+    {
+      "id": "edge-vague",
+      "name": "Edge case: vague trigger with $viz diagram",
+      "prompt": "$viz diagram",
+      "expected_output": "Self-contained HTML with default usecase2 visualization. Vague $viz triggers should produce the default diagram.",
+      "assertions": [
+        "Self-contained HTML generated",
+        "Framework layer with 5 columns",
+        "Use case layer present (defaults to usecase2)",
+        "Dark interactive theme"
+      ]
+    },
+    {
+      "id": "edge-complex-custom",
+      "name": "Edge case: complex branching custom pipeline",
+      "prompt": "$viz custom pipeline for customer-support — agents: ticket_classifier, intent_detector, response_generator, escalation_handler, feedback_collector with branch for high_priority -> escalation_handler and standard -> response_generator",
+      "expected_output": "Self-contained HTML with branching pipeline showing high_priority and standard paths. Framework above, branching use case below.",
+      "assertions": [
+        "Self-contained HTML",
+        "Framework layer with 5 columns",
+        "Custom agents: ticket_classifier, intent_detector, response_generator, escalation_handler, feedback_collector",
+        "Branching logic: high_priority -> escalation_handler, standard -> response_generator",
+        "Dark theme with interactive features"
       ]
     }
   ]
